@@ -1,0 +1,31 @@
+name: Update formulas
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: update
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - name: Copy the formulas from the latest rc release
+        run: |
+          gh release download --repo runtimeconditions/go-rc-cli --pattern '*.rb' --dir Formula --clobber
+          grep -q 'depends_on "rc-profiler-go"' Formula/rc.rb || git rm -q --ignore-unmatch Formula/rc-profiler-go.rb
+          ruby -c Formula/*.rb
+      - name: Commit the change
+        run: |
+          git add Formula
+          git diff --cached --quiet && exit 0
+          version=$(sed -n 's/^  version "\(.*\)"/\1/p' Formula/rc.rb)
+          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -m "rc $version"
+          git push origin HEAD:main
