@@ -10,7 +10,8 @@ profiling is linked into `rc`, so the separate `rc-profiler-go` formula is not a
 language profilers are installed with their own package managers; for example,
 `npm install --save-dev @runtimeconditions/typescript-profiler`.
 
-The `Update formulas` workflow reads the latest stable release's `SHA256SUMS` file from
-[`rc-cli`](https://github.com/runtimeconditions/rc-cli) every hour, or on demand from the Actions tab.
-It updates only the version and four archive checksums in the formula stored in this tap. Formula
-installation code stays in this repository.
+After [`rc-cli`](https://github.com/runtimeconditions/rc-cli) publishes a stable GitHub release, its
+release workflow dispatches that exact tag to the `Update formulas` workflow. The tap downloads that
+release's `SHA256SUMS` file and updates only the version and four archive checksums in the formula
+stored here. Formula installation code stays in this repository. You can run the workflow manually
+from the Actions tab to recover a missed dispatch; leave the tag blank to use the latest stable release.
