@@ -1,8 +1,7 @@
 # Runtime Conditions Homebrew tap
 
 ```sh
-brew tap runtimeconditions/tools
-brew install rc-cli
+brew install runtimeconditions/tools/rc-cli
 ```
 
 The `rc-cli` formula installs the `rc` command, its binding schemas, and shell completions. Go
