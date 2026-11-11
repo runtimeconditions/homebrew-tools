@@ -17,15 +17,33 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-      - name: Copy the formulas from the latest rc release
+      - name: Select the latest stable rc-cli release
+        id: release
         run: |
-          gh release download --repo runtimeconditions/go-rc-cli --pattern '*.rb' --dir Formula --clobber
-          grep -q 'depends_on "rc-profiler-go"' Formula/rc.rb || git rm -q --ignore-unmatch Formula/rc-profiler-go.rb
-          ruby -c Formula/*.rb
-      - name: Commit the change
+          tag=$(gh api repos/runtimeconditions/rc-cli/releases/latest --jq '.tag_name')
+          [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo "Unexpected rc-cli release tag: $tag" >&2
+            exit 1
+          }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Download release checksums
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
-          git add Formula
+          mkdir -p "$RUNNER_TEMP/rc-cli-release"
+          gh release download "$RELEASE_TAG" --repo runtimeconditions/rc-cli \
+            --pattern SHA256SUMS --dir "$RUNNER_TEMP/rc-cli-release"
+      - name: Update the tap-owned rc-cli formula
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          python3 scripts/update_formula.py \
+            --tag "$RELEASE_TAG" \
+            --checksums "$RUNNER_TEMP/rc-cli-release/SHA256SUMS"
+      - name: Commit the version and checksum update
+        run: |
+          git add Formula/rc-cli.rb
           git diff --cached --quiet && exit 0
-          version=$(sed -n 's/^  version "\(.*\)"/\1/p' Formula/rc.rb)
-          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -m "rc $version"
+          version=$(sed -n 's/^  version "\(.*\)"/\1/p' Formula/rc-cli.rb)
+          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -m "rc-cli $version"
           git push origin HEAD:main
