@@ -2,11 +2,17 @@ name: Update formulas
 
 on:
   repository_dispatch:
-    types: [rc-cli-release-published]
+    types: [rc-cli-release-published, rc-profiler-typescript-release-published]
   workflow_dispatch:
     inputs:
+      package:
+        description: Formula to update
+        required: false
+        default: rc-cli
+        type: choice
+        options: [rc-cli, rc-profiler-typescript]
       tag:
-        description: Stable rc-cli release tag; blank selects the latest stable release
+        description: Stable release tag of that package; blank selects the latest stable release
         required: false
         type: string
 
@@ -20,42 +26,47 @@ jobs:
       group: update
     env:
       GH_TOKEN: ${{ github.token }}
+      PACKAGE: ${{ inputs.package || (github.event.action == 'rc-profiler-typescript-release-published' && 'rc-profiler-typescript') || 'rc-cli' }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-      - name: Select and validate the rc-cli release
+      - name: Select and validate the release
         id: release
         env:
           RELEASE_TAG_INPUT: ${{ github.event.client_payload.tag || inputs.tag }}
         run: |
+          repository=$(python3 scripts/update_formula.py --name "$PACKAGE" --print-repository)
           tag="$RELEASE_TAG_INPUT"
           if [[ -z "$tag" ]]; then
-            tag=$(gh api repos/runtimeconditions/rc-cli/releases/latest --jq '.tag_name')
+            tag=$(gh api "repos/$repository/releases/latest" --jq '.tag_name')
           fi
           [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
-            echo "Unexpected rc-cli release tag: $tag" >&2
+            echo "Unexpected $PACKAGE release tag: $tag" >&2
             exit 1
           }
-          gh api "repos/runtimeconditions/rc-cli/releases/tags/$tag" \
+          gh api "repos/$repository/releases/tags/$tag" \
             --jq 'select(.draft == false and .prerelease == false) | .tag_name' >/dev/null
+          echo "repository=$repository" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - name: Download release checksums
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          REPOSITORY: ${{ steps.release.outputs.repository }}
         run: |
-          mkdir -p "$RUNNER_TEMP/rc-cli-release"
-          gh release download "$RELEASE_TAG" --repo runtimeconditions/rc-cli \
-            --pattern SHA256SUMS --dir "$RUNNER_TEMP/rc-cli-release"
-      - name: Update the tap-owned rc-cli formula
+          mkdir -p "$RUNNER_TEMP/release"
+          gh release download "$RELEASE_TAG" --repo "$REPOSITORY" \
+            --pattern SHA256SUMS --dir "$RUNNER_TEMP/release"
+      - name: Update the tap-owned formula
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           python3 scripts/update_formula.py \
+            --name "$PACKAGE" \
             --tag "$RELEASE_TAG" \
-            --checksums "$RUNNER_TEMP/rc-cli-release/SHA256SUMS"
+            --checksums "$RUNNER_TEMP/release/SHA256SUMS"
       - name: Commit the version and checksum update
         run: |
-          git add Formula/rc-cli.rb
+          git add "Formula/$PACKAGE.rb"
           git diff --cached --quiet && exit 0
-          version=$(sed -n 's/^  version "\(.*\)"/\1/p' Formula/rc-cli.rb)
-          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -m "rc-cli $version"
+          version=$(sed -n 's/^  version "\(.*\)"/\1/p' "Formula/$PACKAGE.rb")
+          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -m "$PACKAGE $version"
           git push origin HEAD:main
