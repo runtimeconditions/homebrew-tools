@@ -1,28 +1,28 @@
 class RcCli < Formula
   desc "Runtime Conditions command line"
   homepage "https://github.com/runtimeconditions/rc-cli"
-  version "0.1.2"
+  version "0.2.0"
   license "MIT"
 
   on_macos do
     on_arm do
       url "https://github.com/runtimeconditions/rc-cli/releases/download/v#{version}/rc-cli_#{version}_darwin_arm64.tar.gz"
-      sha256 "b2c4fcdd9dbb75bb59507581dfebe26cf01b81a332b706928e1a1b72bb1832ff"
+      sha256 "1d39938bdc77191e14aaae681761a7e5fd9b16e95fa74ece1d87191b4f4dec26"
     end
     on_intel do
       url "https://github.com/runtimeconditions/rc-cli/releases/download/v#{version}/rc-cli_#{version}_darwin_amd64.tar.gz"
-      sha256 "64698c8e523fabaff33abac95731ad0f29b5a449cf78b469f8fe7dc6b08ed74d"
+      sha256 "ded9d287c9ebaf6572ce02109282f22c8c1e5a26aed2d4b57a433fe022086235"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/runtimeconditions/rc-cli/releases/download/v#{version}/rc-cli_#{version}_linux_arm64.tar.gz"
-      sha256 "0905c30aa90ed086798ee8eb65abae9b3123ab5d83a7886093c80316877bc623"
+      sha256 "8921ee5d8fe561bdea074cdd95ab4c378eddee876ab0fd6405eb9eddfefa9498"
     end
     on_intel do
       url "https://github.com/runtimeconditions/rc-cli/releases/download/v#{version}/rc-cli_#{version}_linux_amd64.tar.gz"
-      sha256 "41202b4449ae6a3ff7af00a88d8e8dae5d26cdccad206bbcaf4d9d372f3f01bd"
+      sha256 "137dfa14e95413348698a25571b3dcdaf6d578e79a94e3b25207103a72c6fcbf"
     end
   end
 
