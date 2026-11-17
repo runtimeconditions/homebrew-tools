@@ -80,6 +80,49 @@ class TypeScriptProfilerTests(unittest.TestCase):
                 update.update_formula("rc-profiler-typescript", Path(directory, "missing.rb"), "v0.3.0", checksums, Path(directory, "none.rb"))
 
 
+class JavaProfilerTests(unittest.TestCase):
+    template = ROOT / "templates/rc-profiler-java.rb"
+
+    def test_the_formula_is_created_from_the_template_on_the_first_release(self):
+        with tempfile.TemporaryDirectory() as directory:
+            formula = Path(directory, "rc-profiler-java.rb")
+            checksums = sums(directory, [("rc-profiler-java_0.1.0.tar.gz", "a" * 64), ("rc-profiler-java_0.1.0-1_amd64.deb", "b" * 64),
+                                         ("runtimeconditions-java-profiler-0.1.0.jar", "d" * 64)])
+            update.update_formula("rc-profiler-java", formula, "v0.1.0", checksums, self.template)
+            created = formula.read_text()
+        self.assertIn('version "0.1.0"', created)
+        self.assertIn('sha256 "' + "a" * 64 + '"', created)
+        self.assertNotIn("b" * 64, created)
+        self.assertNotIn("d" * 64, created)
+        self.assertIn('depends_on "openjdk@21"', created)
+        self.assertIn("class RcProfilerJava < Formula", created)
+
+    def test_the_template_names_the_archive_the_java_release_publishes(self):
+        text = self.template.read_text()
+        self.assertIn("https://github.com/runtimeconditions/java-rc-profiler/releases/download/v#{version}/rc-profiler-java_#{version}.tar.gz", text)
+        self.assertIn('libexec.install "rc-profiler-java", "runtimeconditions-java-profiler.jar"', text)
+
+    def test_later_releases_change_only_the_version_and_hash_in_place(self):
+        with tempfile.TemporaryDirectory() as directory:
+            formula = Path(directory, "rc-profiler-java.rb")
+            update.update_formula("rc-profiler-java", formula, "v0.1.0",
+                                  sums(directory, [("rc-profiler-java_0.1.0.tar.gz", "a" * 64)]), self.template)
+            first = formula.read_text()
+            formula.write_text(first.replace("depends_on", "# edited in the tap\n  depends_on"))
+            update.update_formula("rc-profiler-java", formula, "v0.2.0",
+                                  sums(directory, [("rc-profiler-java_0.2.0.tar.gz", "c" * 64)]), None)
+            second = formula.read_text()
+        self.assertIn('version "0.2.0"', second)
+        self.assertIn('sha256 "' + "c" * 64 + '"', second)
+        self.assertIn("# edited in the tap", second, "install code edited in the tap must be kept")
+
+    def test_a_release_without_the_archive_is_an_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            checksums = sums(directory, [("rc-profiler-java_0.1.0-1_amd64.deb", "b" * 64)])
+            with self.assertRaises(KeyError):
+                update.update_formula("rc-profiler-java", Path(directory, "f.rb"), "v0.1.0", checksums, self.template)
+
+
 class SharedChecksTests(unittest.TestCase):
     def test_only_stable_release_tags_are_accepted(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -101,6 +144,13 @@ class SharedChecksTests(unittest.TestCase):
     def test_each_formula_follows_its_own_repository(self):
         self.assertEqual(update.PACKAGES["rc-cli"]["repository"], "runtimeconditions/rc-cli")
         self.assertEqual(update.PACKAGES["rc-profiler-typescript"]["repository"], "runtimeconditions/ts-rc-profiler")
+        self.assertEqual(update.PACKAGES["rc-profiler-java"]["repository"], "runtimeconditions/java-rc-profiler")
+
+    def test_the_workflow_listens_for_every_package_and_offers_it_by_hand(self):
+        workflow = (ROOT / ".github/workflows/update-formulas.yml").read_text()
+        for name in update.PACKAGES:
+            self.assertIn(f"{name}-release-published", workflow, name)
+            self.assertIn(name, workflow.split("options:")[1].split("\n")[0], name)
 
 
 if __name__ == "__main__":

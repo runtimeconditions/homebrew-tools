@@ -2,7 +2,7 @@ name: Update formulas
 
 on:
   repository_dispatch:
-    types: [rc-cli-release-published, rc-profiler-typescript-release-published]
+    types: [rc-cli-release-published, rc-profiler-typescript-release-published, rc-profiler-java-release-published]
   workflow_dispatch:
     inputs:
       package:
@@ -10,7 +10,7 @@ on:
         required: false
         default: rc-cli
         type: choice
-        options: [rc-cli, rc-profiler-typescript]
+        options: [rc-cli, rc-profiler-typescript, rc-profiler-java]
       tag:
         description: Stable release tag of that package; blank selects the latest stable release
         required: false
@@ -26,7 +26,7 @@ jobs:
       group: update
     env:
       GH_TOKEN: ${{ github.token }}
-      PACKAGE: ${{ inputs.package || (github.event.action == 'rc-profiler-typescript-release-published' && 'rc-profiler-typescript') || 'rc-cli' }}
+      PACKAGE: ${{ inputs.package || (github.event.action == 'rc-profiler-typescript-release-published' && 'rc-profiler-typescript') || (github.event.action == 'rc-profiler-java-release-published' && 'rc-profiler-java') || 'rc-cli' }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: Select and validate the release
