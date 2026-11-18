@@ -19,6 +19,10 @@ PACKAGES = {
         "repository": "runtimeconditions/ts-rc-profiler",
         "archives": ["rc-profiler-typescript_{version}.tar.gz"],
     },
+    "rc-profiler-java": {
+        "repository": "runtimeconditions/java-rc-profiler",
+        "archives": ["rc-profiler-java_{version}.tar.gz"],
+    },
 }
 
 
